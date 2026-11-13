@@ -18,13 +18,13 @@ PyQt5 GUI，錄影與解碼交給 ffmpeg 子行程，可選用 go2rtc 做本機 
 | 網路 | 與相機同網段（預設 `10.30.3.0/24`），RTSP 走 TCP |
 | 硬碟 | 錄影檔很大（1080p120，~1.5 GB/分/路）；NAS 模式先寫本機 TEMP 再背景複製 |
 
-外部執行檔（**很大、不進版控、需手動放到專案根目錄**）：
+外部執行檔（**很大、不進版控**，下載方式見 [2-3](#2-3-外部執行檔必要)）：
 
-| 檔案 | 來源 | 用途 |
+| 檔案 | 版本 | 用途 |
 |---|---|---|
-| `ffmpeg.exe` | [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) essentials 或 full build（需含 QSV；目前用 8.1.1 essentials） | 預覽解碼 + 錄影（`-c copy`） |
-| `ffprobe.exe` | 同上（同一個 zip 的 `bin\`） | 同步播放分頁探測影片長度 / fps |
-| `go2rtc.exe` | [AlexxIT/go2rtc releases](https://github.com/AlexxIT/go2rtc/releases)（`go2rtc_win64.zip`，目前用 1.9.14） | `USE_GO2RTC=True` 時的本機 restream |
+| `ffmpeg.exe` | FFmpeg 8.1.1 essentials（gyan.dev） | 預覽解碼 + 錄影（`-c copy`） |
+| `ffprobe.exe` | 同上 | 同步播放分頁探測影片長度 / fps |
+| `go2rtc.exe` | go2rtc 1.9.14 | `USE_GO2RTC=True` 時的本機 restream |
 
 ---
 
@@ -62,9 +62,31 @@ uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 
 > conda 也能用（`conda create -n ptz -c conda-forge python=3.14 pip`，`conda activate ptz` 後 `pip install -r requirements.txt`），`start.bat` / `packing.bat` 在沒有 `.venv` 時會使用目前已啟用的 conda 環境。
 
-### 2-3. 外部執行檔
+### 2-3. 外部執行檔（必要）
 
-把上表的 `ffmpeg.exe` / `ffprobe.exe` / `go2rtc.exe` 放到專案根目錄（與 `main.py` 同層）。
+這三個 exe 太大（ffmpeg/ffprobe 各約 100 MB），**不放在 GitHub**，要自己下載。以下連結都是**已測試過的固定版本**（與開發機上的檔案逐位元組相同），請不要換成最新版：程式裡有針對 ffmpeg 8.x 的 QSV 行為做處理，新版未經測試。
+
+| 步驟 | 下載（點了直接下載 zip） | 從 zip 裡取出 |
+|---|---|---|
+| ① | [ffmpeg-8.1.1-essentials_build.zip](https://github.com/GyanD/codexffmpeg/releases/download/8.1.1/ffmpeg-8.1.1-essentials_build.zip)（約 105 MB，gyan.dev 官方 GitHub 鏡像） | `ffmpeg-8.1.1-essentials_build\bin\` 裡的 **`ffmpeg.exe`**、**`ffprobe.exe`**（`ffplay.exe` 用不到） |
+| ② | [go2rtc_win64.zip（v1.9.14）](https://github.com/AlexxIT/go2rtc/releases/download/v1.9.14/go2rtc_win64.zip)（約 7 MB） | 裡面唯一的 **`go2rtc.exe`** |
+
+**放到專案根目錄**，也就是和 `main.py` 同一層：
+
+```
+ncku-ptz-recorder\
+├─ main.py
+├─ ffmpeg.exe      ← ①
+├─ ffprobe.exe     ← ①
+├─ go2rtc.exe      ← ②
+├─ config.ini      ← 2-4 建立
+├─ go2rtc.yaml
+└─ ...
+```
+
+> 這三個檔名已列在 `.gitignore`，放進來也不會被 commit。
+> 少了 `ffmpeg.exe` 會退回使用 PATH 上的 `ffmpeg`（版本不一定對）；少了 `go2rtc.exe` 終端機會印 `[go2rtc] 找不到 ...`，相機會連不上。
+> 原始下載頁：[gyan.dev/ffmpeg/builds](https://www.gyan.dev/ffmpeg/builds/)、[go2rtc releases](https://github.com/AlexxIT/go2rtc/releases)。
 
 ### 2-4. 相機帳密（必要）
 
