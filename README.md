@@ -196,16 +196,20 @@ NAS 模式錄影先寫 `%TEMP%\PTZ_staging\<session>\`，停錄後 daemon thread
 
 ## 7. 打包
 
+**用途**：把程式包成單一 `dist\PtzRecorder.exe`（約 178 MB，內含 Python、所有套件、ffmpeg/ffprobe/go2rtc、wsdl、icons），複製到**沒有開發環境的電腦**（例如場館錄影機）雙擊即可執行。自己開發測試用 F5 / `start.bat` 即可，不需要打包；改了程式碼要重新打包，目標電腦上的 exe 才會更新。
+
 ```bat
-packing.bat        REM = (.venv / 已啟用的 conda 環境 / py -3.14) -m PyInstaller --clean --noconfirm main.spec
+.\packing.bat      REM = (.venv / 已啟用的 conda 環境 / py -3.14) -m PyInstaller --clean --noconfirm main.spec
 ```
 
-- 需要 Python 3.14 環境且已裝 `pyinstaller`（`requirements.txt` 已包含）。
+- 約 2 分鐘。需要 Python 3.14 環境且已裝 `pyinstaller`（`requirements.txt` 已包含）。
 - 若專案根目錄有 `config.ini`，會一併打包進 exe；執行時也會**優先讀 exe 旁邊的 `config.ini`**，所以換帳密不用重新打包。⚠️ 打包進帳密的 exe 不要公開散布。
 - `main.spec` 是 **onefile**（單一 `dist\PtzRecorder.exe`，執行時自解壓到暫存）。
 - **打包前** `ffmpeg.exe` / `ffprobe.exe` / `go2rtc.exe` 要先放在專案根目錄（`main.spec` 的 `datas` 會把它們塞進 exe）。
 - `main.spec` 明確 `excludes` 掉 `torch` / `ultralytics` / `tensorflow` 等（純錄影版）。之後要打包含 YOLO 的版本要改這裡。
-- Windows icon 目前給的是 `.png`（`icons/video-camera.png`），部分 PyInstaller 版本會忽略，要正式 icon 請換 `.ico`。
+- exe 圖示用 `icons/video-camera.ico`（由 `video-camera.png` 轉出，含 16~256px）。不要改回 `.png`：PyInstaller 需要另裝 Pillow 才能轉 png，沒裝會直接打包失敗。
+- `WARNING: Hidden import "sip" not found!` 可忽略（PyQt5 用的是 `PyQt5.sip`）。
+- 已驗證（2026-11）：exe 複製到空資料夾單獨執行，8 台相機經內建 go2rtc 正常連線。
 
 ---
 

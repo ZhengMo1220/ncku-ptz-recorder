@@ -68,5 +68,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['icons/video-camera.png'],
+    icon=['icons/video-camera.ico'],   # 用 .ico：給 .png 的話 PyInstaller 需另裝 Pillow 才能轉，否則打包失敗
 )
