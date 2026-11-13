@@ -104,7 +104,11 @@ conda 使用者也可以直接 `conda activate ptz` 後 `python main.py`。啟�
 
 1. 安裝 Python 擴充套件（開啟資料夾時會依 `.vscode/extensions.json` 提示）。
 2. `Ctrl+Shift+P` → **Python: Select Interpreter** → 選 `ptz`（conda）或 `.venv`。
-3. `F5` 選 **Run PTZ Recorder (main.py)**（`.vscode/launch.json`，已把 `cwd` 設為專案根目錄）。
+3. `F5` 選 **Run PTZ Recorder (main.py)**（`.vscode/launch.json`，已把 `cwd` 設為專案根目錄）。F5 直接用選好的直譯器，**不需要**先 `conda activate`。
+
+> 在 VS Code 的 PowerShell 終端機打 `conda activate ptz` 出現「無法辨識 'conda'」，是因為 conda 沒有對 PowerShell 初始化。擇一處理：
+> - 一次性（只影響當前終端機）：`& "$env:USERPROFILE\anaconda3\shell\condabin\conda-hook.ps1"; conda activate ptz`
+> - 永久：在「Anaconda Prompt」執行一次 `conda init powershell`，然後重開 VS Code
 
 > 不在相機網段（`10.30.3.0/24`）時程式仍可開啟，但預覽會是黑畫面、ONVIF 會印連線失敗，屬正常現象。
 
