@@ -34,4 +34,5 @@ config.ini
 # ── 編輯器 ──
 .vscode/*
 !.vscode/launch.json
+!.vscode/settings.json
 !.vscode/extensions.json

@@ -1,8 +1,7 @@
 # NCKU PTZ 錄影 / 同步播放 App —— Python 依賴
 # ---------------------------------------------------------------
-# 環境：Windows + Python 3.14。venv（見 install.bat）或 conda 環境 ptz（python=3.14）皆可。
-#   注意：專案早期的 conda "ptz" 3.9 環境已不再使用；實際開發/打包都在 3.14。
-# 安裝：在已啟用的 venv / conda 環境裡 pip install -r requirements.txt
+# 環境：Windows + Python 3.14，專案根目錄的 .venv（建議用 uv 建立，見 install.bat / README）。
+# 安裝：uv pip install --python .venv\Scripts\python.exe -r requirements.txt（或 install.bat）
 #
 # 版本 = 目前開發機實際安裝的版本（pip freeze）。opencv 用一般版（非 headless），
 # GUI 走 PyQt5。

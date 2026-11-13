@@ -1,25 +1,40 @@
 @echo off
-chcp 65001 >nul
+REM Keep this file ASCII-only: cmd can mis-parse UTF-8 lines and run fragments.
+REM Create .venv (Python 3.14) and install requirements.
+REM Prefers uv (fast, downloads Python 3.14 itself); falls back to py launcher + pip.
+REM Install uv: powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 cd /d "%~dp0"
-REM 建立 venv 並安裝依賴。需要系統 Python 3.14（C:\Python314）。
-REM 若沒裝過 py launcher，把下面的 "py -3.14" 換成 "C:\Python314\python.exe"。
 
-py -3.14 -m venv .venv
-if %ERRORLEVEL% neq 0 (
-    echo 找不到 Python 3.14，請先安裝 https://www.python.org/downloads/
-    exit /b %ERRORLEVEL%
+where uv >nul 2>nul
+if %ERRORLEVEL% equ 0 (
+    uv venv --python 3.14 .venv
+    if errorlevel 1 goto :fail
+    uv pip install --python .venv\Scripts\python.exe -r requirements.txt
+    if errorlevel 1 goto :fail
+) else (
+    py -3.14 -m venv .venv
+    if errorlevel 1 (
+        echo [ERROR] Neither uv nor Python 3.14 found. Install uv - recommended - or Python 3.14 from python.org.
+        goto :fail
+    )
+    .venv\Scripts\python.exe -m pip install --upgrade pip
+    .venv\Scripts\python.exe -m pip install -r requirements.txt
+    if errorlevel 1 goto :fail
 )
-
-call .venv\Scripts\activate.bat
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
 
 if not exist config.ini (
     copy config.example.ini config.ini >nul
-    echo 已建立 config.ini，請打開它填入相機帳密。
+    echo Created config.ini - open it and fill in the camera username/password.
 )
 
 echo.
-echo 完成。之後用 start.bat 啟動（或： .venv\Scripts\activate ^&^& python main.py）。
-echo 記得把 ffmpeg.exe / ffprobe.exe / go2rtc.exe 放到專案根目錄（見 requirements.txt 說明）。
+echo Done. Run start.bat, or press F5 in VS Code.
+echo Remember to put ffmpeg.exe, ffprobe.exe and go2rtc.exe in the project root - see README.
 pause
+exit /b 0
+
+:fail
+echo.
+echo Install failed. See messages above.
+pause
+exit /b 1

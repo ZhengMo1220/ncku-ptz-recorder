@@ -13,7 +13,7 @@ PyQt5 GUI，錄影與解碼交給 ffmpeg 子行程，可選用 go2rtc 做本機 
 | 項目 | 版本 / 說明 |
 |---|---|
 | OS | Windows 10/11 |
-| Python | **3.14**。兩種裝法擇一：python.org 安裝版 + venv（`install.bat`），或 conda 環境 `ptz`（`python=3.14`）。早期的 conda `ptz` **3.9** 環境已棄用 |
+| Python | **3.14**，裝在專案根目錄的 `.venv\`。建議用 [uv](https://docs.astral.sh/uv/) 建立（會自動下載 Python 3.14，不用另外安裝）。早期的 conda `ptz` 3.9 環境已棄用 |
 | GPU | Intel iGPU（Iris Xe 等），預覽/回放解碼走 QSV（`h264_qsv`）。建議在 Windows 圖形設定把 `python.exe` / 打包後 exe 設「省電」強制走 iGPU |
 | 網路 | 與相機同網段（預設 `10.30.3.0/24`），RTSP 走 TCP |
 | 硬碟 | 錄影檔很大（1080p120，~1.5 GB/分/路）；NAS 模式先寫本機 TEMP 再背景複製 |
@@ -33,33 +33,34 @@ PyQt5 GUI，錄影與解碼交給 ffmpeg 子行程，可選用 go2rtc 做本機 
 ### 2-1. 取得程式碼
 
 ```bat
-git clone <本 repo 的 URL>
-cd NCKU-PTZ-record
+git clone https://github.com/ZhengMo1220/ncku-ptz-recorder.git
+cd ncku-ptz-recorder
 ```
 
-### 2-2. Python 環境（擇一）
+### 2-2. Python 環境（uv，建議）
 
-**A. conda（Anaconda / Miniconda）**
+沒有 uv 先裝一次（PowerShell）：
 
-```bat
-conda create -n ptz -c conda-forge python=3.14 pip -y
-conda activate ptz
-pip install -r requirements.txt
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-**B. python.org 安裝版 + venv**
+然後在專案根目錄執行：
 
 ```bat
 install.bat
 ```
 
-會用 `py -3.14` 建 `.venv\` 並 `pip install -r requirements.txt`（需先從 python.org 裝 3.14，含 py launcher）。手動版：
+`install.bat` 會：有 uv 就用 `uv venv --python 3.14 .venv` + `uv pip install -r requirements.txt`；沒有 uv 才退回 `py -3.14 -m venv` + pip（需先從 python.org 裝 3.14）。順便從範本建立 `config.ini`。
+
+手動版：
 
 ```bat
-py -3.14 -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
+uv venv --python 3.14 .venv
+uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 ```
+
+> conda 也能用（`conda create -n ptz -c conda-forge python=3.14 pip`，`conda activate ptz` 後 `pip install -r requirements.txt`），`start.bat` / `packing.bat` 在沒有 `.venv` 時會使用目前已啟用的 conda 環境。
 
 ### 2-3. 外部執行檔
 
@@ -97,18 +98,15 @@ password = 相機密碼
 start.bat
 ```
 
-`start.bat` 的順序：有 `.venv\` 就用它 → 已 `conda activate` 任一環境就用該環境的 `python` → 否則退回 `py -3.14 main.py`。
-conda 使用者也可以直接 `conda activate ptz` 後 `python main.py`。啟動預設停在「多機攝影機」分頁。
+`start.bat` 的順序：有 `.venv\` 就用它 → 已 `conda activate` 任一環境就用該環境的 `python` → 否則退回 `py -3.14`。也可以直接 `.venv\Scripts\python.exe main.py`。啟動預設停在「多機攝影機」分頁。
 
 **VS Code**：
 
 1. 安裝 Python 擴充套件（開啟資料夾時會依 `.vscode/extensions.json` 提示）。
-2. `Ctrl+Shift+P` → **Python: Select Interpreter** → 選 `ptz`（conda）或 `.venv`。
-3. `F5` 選 **Run PTZ Recorder (main.py)**（`.vscode/launch.json`，已把 `cwd` 設為專案根目錄）。F5 直接用選好的直譯器，**不需要**先 `conda activate`。
+2. `.vscode/settings.json` 已把直譯器預設為 `${workspaceFolder}\.venv`；右下角若沒顯示 `.venv`，`Ctrl+Shift+P` → **Python: Select Interpreter** 手動選。
+3. `F5` 選 **Run PTZ Recorder (main.py)**（`.vscode/launch.json`，已把 `cwd` 設為專案根目錄）。
 
-> 在 VS Code 的 PowerShell 終端機打 `conda activate ptz` 出現「無法辨識 'conda'」，是因為 conda 沒有對 PowerShell 初始化。擇一處理：
-> - 一次性（只影響當前終端機）：`& "$env:USERPROFILE\anaconda3\shell\condabin\conda-hook.ps1"; conda activate ptz`
-> - 永久：在「Anaconda Prompt」執行一次 `conda init powershell`，然後重開 VS Code
+> 所有 `.bat` 檔刻意**只用 ASCII（英文）**。cmd 在 `chcp 65001` 下讀含中文的 bat 會切錯行、把半行字當指令執行（實測會誤跑 `ffmpeg`），修改時請勿加入中文。
 
 > 不在相機網段（`10.30.3.0/24`）時程式仍可開啟，但預覽會是黑畫面、ONVIF 會印連線失敗，屬正常現象。
 
@@ -171,7 +169,7 @@ NAS 模式錄影先寫 `%TEMP%\PTZ_staging\<session>\`，停錄後 daemon thread
 ## 7. 打包
 
 ```bat
-packing.bat        REM = (venv / 已啟用的 conda 環境 / py -3.14) -m PyInstaller --clean --noconfirm main.spec
+packing.bat        REM = (.venv / 已啟用的 conda 環境 / py -3.14) -m PyInstaller --clean --noconfirm main.spec
 ```
 
 - 需要 Python 3.14 環境且已裝 `pyinstaller`（`requirements.txt` 已包含）。
@@ -221,7 +219,7 @@ tab.set_annotate_hook(fn)   # fn: (frame_bgr: np.ndarray, cam_name: str) -> np.n
 main.py                     進入點；建三個分頁、啟動/收 go2rtc、GC 調校
 main_window.ui / _ui.py     外框（QTabWidget），可 pyuic5 重生
 compile.bat                 只重生 main_window_ui.py（勿碰 ptz_control_ui.py）
-install.bat / start.bat     建 venv (Python 3.14) / 啟動
+install.bat / start.bat     用 uv 建 .venv (Python 3.14) / 啟動
 packing.bat / main.spec     PyInstaller onefile 打包
 config.example.ini          相機帳密範本 → 複製成 config.ini（不進版控）
 .vscode/                    VS Code 啟動設定（launch.json）與建議擴充套件
