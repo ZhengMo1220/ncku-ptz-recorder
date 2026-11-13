@@ -1,0 +1,10 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>up-arrow.png</file>
+    <file>left-arrow.png</file>
+    <file>right-arrow.png</file>
+    <file>down-arrow.png</file>
+    <file>zoom-in.png</file>
+    <file>zoom-out.png</file>
+  </qresource>
+</RCC>

@@ -1,0 +1,25 @@
+# NCKU PTZ 錄影 / 同步播放 App —— Python 依賴
+# ---------------------------------------------------------------
+# 環境：Windows + Python 3.14。venv（見 install.bat）或 conda 環境 ptz（python=3.14）皆可。
+#   注意：專案早期的 conda "ptz" 3.9 環境已不再使用；實際開發/打包都在 3.14。
+# 安裝：在已啟用的 venv / conda 環境裡 pip install -r requirements.txt
+#
+# 版本 = 目前開發機實際安裝的版本（pip freeze）。opencv 用一般版（非 headless），
+# GUI 走 PyQt5。
+
+numpy==2.4.3
+opencv-python==4.13.0.92
+PyQt5==5.15.11
+onvif_zeep==0.2.12       # PTZ / SetSynchronizationPoint；會連帶裝 zeep + lxml
+
+# 打包成單一 exe 用（執行 App 本身不需要）：
+pyinstaller==6.20.0
+
+# ---------------------------------------------------------------
+# 另需「手動」放到專案根目錄的外部執行檔（很大，不進版控、不由 pip 裝）：
+#   ffmpeg.exe   ── 預覽解碼 + 錄影（-c copy）。建議 gyan.dev 的 full build。
+#   ffprobe.exe  ── 同步播放分頁探測影片長度 / fps。
+#   go2rtc.exe   ── USE_GO2RTC=True 時的本機 restream（github.com/AlexxIT/go2rtc）。
+#
+# YOLO（目前未接上，playback_tab.set_annotate_hook 是預留接口）若要啟用再自行安裝：
+#   pip install torch torchvision ultralytics

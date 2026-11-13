@@ -1,0 +1,54 @@
+# go2rtc 本機 restream 設定
+# 每台相機只被 go2rtc 連「一次」，再把同一條串流分流給 App 的「預覽 + 錄影」。
+# 這樣相機不用同時推兩條 120fps 主流，錄影時開預覽較不會掉幀。
+#
+# 啟動：App 在 utils/stream_thread.py 的 USE_GO2RTC=True 時會自動跑
+#       go2rtc.exe -config go2rtc.yaml（也可手動在終端機跑同一行）。
+# 除錯：瀏覽器開 http://127.0.0.1:1984 可看每條 stream 狀態。
+#
+# 串流名稱必須對應程式裡的 camera_name；App 會連 rtsp://127.0.0.1:8554/<name>。
+#   多機分頁：Ptz01~Ptz08。
+#   單機分頁（camera_tab_control.py 的 camera_map）：另外還有 Rot01~Rot20、Sti01~Sti06。
+# IP 對應：Rot01→10.30.3.1…Rot20→.20、Sti01→.21…Sti06→.26、Ptz01→.27…Ptz08→.34。
+
+api:
+  listen: "127.0.0.1:1984"     # go2rtc 網頁/API（僅本機，除錯用）
+
+rtsp:
+  listen: "127.0.0.1:8554"     # 本機 RTSP restream；App 連 rtsp://127.0.0.1:8554/<name>
+
+streams:
+  Rot01: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.1:554/stream0
+  Rot02: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.2:554/stream0
+  Rot03: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.3:554/stream0
+  Rot04: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.4:554/stream0
+  Rot05: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.5:554/stream0
+  Rot06: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.6:554/stream0
+  Rot07: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.7:554/stream0
+  Rot08: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.8:554/stream0
+  Rot09: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.9:554/stream0
+  Rot10: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.10:554/stream0
+  Rot11: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.11:554/stream0
+  Rot12: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.12:554/stream0
+  Rot13: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.13:554/stream0
+  Rot14: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.14:554/stream0
+  Rot15: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.15:554/stream0
+  Rot16: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.16:554/stream0
+  Rot17: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.17:554/stream0
+  Rot18: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.18:554/stream0
+  Rot19: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.19:554/stream0
+  Rot20: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.20:554/stream0
+  Sti01: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.21:554/stream0
+  Sti02: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.22:554/stream0
+  Sti03: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.23:554/stream0
+  Sti04: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.24:554/stream0
+  Sti05: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.25:554/stream0
+  Sti06: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.26:554/stream0
+  Ptz01: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.27:554/stream0
+  Ptz02: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.28:554/stream0
+  Ptz03: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.29:554/stream0
+  Ptz04: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.30:554/stream0
+  Ptz05: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.31:554/stream0
+  Ptz06: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.32:554/stream0
+  Ptz07: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.33:554/stream0
+  Ptz08: rtsp://${PTZ_CAMERA_USER}:${PTZ_CAMERA_PASS}@10.30.3.34:554/stream0

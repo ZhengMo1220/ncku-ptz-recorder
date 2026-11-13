@@ -1,0 +1,37 @@
+# ── Python 編譯快取 ──────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ── venv ────────────────────────────────────────
+.venv/
+
+# ── PyInstaller 打包產物（可由 main.spec 重建）──────
+build/
+dist/
+
+# ── 執行期日誌 ───────────────────────────────────
+*.log
+
+# ── 錄影檔（很大，不進版控）──────────────────────
+recordings/
+
+# ── 第三方執行檔（很大；手動放置，打包時會塞進 exe）─
+ffmpeg.exe
+ffprobe.exe
+go2rtc.exe
+
+# ── Claude Code 本機設定 ─────────────────────────
+.claude/settings.local.json
+
+# ── OS / 編輯器雜物 ──────────────────────────────
+Thumbs.db
+.DS_Store
+
+# ── 相機帳密（本機設定，勿上傳；範本見 config.example.ini）──
+config.ini
+
+# ── 編輯器 ──
+.vscode/*
+!.vscode/launch.json
+!.vscode/extensions.json
