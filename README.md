@@ -92,13 +92,17 @@ password = 相機密碼
 
 ## 3. 執行
 
-**命令列**（一定要在專案根目錄執行；`icons/`、`wsdl/`、`ffmpeg.exe` 等都是相對於工作目錄找的）：
+**終端機**（要在專案根目錄執行；`icons/`、`wsdl/`、`ffmpeg.exe` 等都是相對於工作目錄找的）：
 
-```bat
-start.bat
-```
+| 終端機 | 指令 |
+|---|---|
+| PowerShell（VS Code 預設） | `.\start.bat` 或 `.\.venv\Scripts\python.exe main.py` |
+| 命令提示字元 cmd | `start.bat` 或 `.venv\Scripts\python.exe main.py` |
+| 任何終端機（用 uv） | `uv run python main.py`（會自動使用專案的 `.venv`） |
 
-`start.bat` 的順序：有 `.venv\` 就用它 → 已 `conda activate` 任一環境就用該環境的 `python` → 否則退回 `py -3.14`。也可以直接 `.venv\Scripts\python.exe main.py`。啟動預設停在「多機攝影機」分頁。
+> PowerShell 不會執行目前資料夾的檔案，所以要加 `.\`（打 `start.bat` 會說無法辨識）。
+> 想先啟用環境再用 `python`：PowerShell 用 `.\.venv\Scripts\Activate.ps1`，cmd 用 `.venv\Scripts\activate.bat`。
+終端機會印出每台相機的連線、錄影、NAS 複製 log，除錯時很有用。`start.bat` 使用的直譯器順序：`.venv\` → 已啟用的 conda 環境 → `py -3.14`。啟動預設停在「多機攝影機」分頁。
 
 **VS Code**：
 
@@ -149,7 +153,9 @@ go2rtc 模式下起錄時，`utils/onvif_sync.py` 的 `KeyframeSyncer` 會用 ON
 
 ### NAS staging
 
-NAS 模式錄影先寫 `%TEMP%\PTZ_staging\<session>\`，停錄後 daemon thread `shutil.copy2` 到 NAS（預設 `Z:\PTZ recordings`）。理由：8 路 1080p120 直寫 SMB 會掉 2~3% 幀。NAS 連不到時檔案改存桌面 `PTZ recordings\`（不會被 24h 清理刪掉）。開機時 `cleanup_staging_dir()` 清 >24h 的 staging 孤兒檔。
+NAS 模式錄影先寫 `%TEMP%\PTZ_staging\<session>\`，停錄後 daemon thread `shutil.copy2` 到 NAS（預設 `Z:\PTZ recordings`）。理由：8 路 1080p120 直寫 SMB 會掉 2~3% 幀。NAS 連不到時檔案改存桌面 `PTZ recordings\`（不會被 24h 清理刪掉）。
+
+**開始錄影前**會先檢查 NAS 路徑的根（如 `Z:\` 或 `\\server\share\`）是否存在（`utils/save_location.py`）；不存在就跳一次對話框，讓使用者選「改存桌面」/「選擇資料夾…」/「取消錄影」，並自動把存檔位置切到「自訂」。若錄影途中 NAS 才斷線，停錄後所有相機的複製失敗會彙整成**一個**視窗（不再每台各跳一次）。開機時 `cleanup_staging_dir()` 清 >24h 的 staging 孤兒檔。
 
 ---
 

@@ -818,8 +818,9 @@ class StreamThread(QThread):
                 elif rtype == "nas_copy_error":
                     # 複製失敗：保留 local 路徑當 fallback，讓使用者至少有本機檔可用
                     self.last_recording_path = result.get("local_path") or self.last_recording_path
+                    # 只發 nas_copy_status；由分頁決定怎麼提示（多機分頁會彙整成一個視窗，
+                    # 不再每台各跳一次 recording_error）
                     self.nas_copy_status.emit("error", result["msg"])
-                    self.recording_error.emit(result["msg"])
             except queue.Empty:
                 pass
 

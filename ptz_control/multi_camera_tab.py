@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont
 from utils.stream_thread import StreamThread, cleanup_staging_dir, USE_GO2RTC
+from utils.save_location import nas_reachable, ask_local_dir_when_nas_missing
 from utils.onvif_sync import KeyframeSyncer, SYNC_FIRE_BEFORE_START
 
 # health_timer：偵測 worker 死掉並自動重連。間隔拉長到 15s（原本 5s 會讓真的
@@ -315,6 +316,7 @@ class MultiCameraTab(QWidget):
         self.nas_copy_errors  = 0
         self._stop_confirmed  = False  # _after_stop 跑完才開始檢查完成度
         self._nas_expected    = 0      # _after_stop snapshot 當下的 started 數
+        self._nas_error_msgs  = []     # 各相機 NAS 複製失敗訊息，全部完成後彙整成一個視窗
 
         # 啟動時清掃 staging 孤兒檔（>24h），免得歷史 crash 殘檔吃硬碟
         try:
@@ -495,6 +497,16 @@ class MultiCameraTab(QWidget):
         else:   # 只剩 NAS / 自訂兩種模式，預設 NAS
             save_to_nas = True
             custom_dir  = None
+            # NAS 根目錄（如 Z:\）不存在 → 先問改存哪裡，避免錄完才每台各跳一次「NAS 複製失敗」
+            if not nas_reachable(nas_dir):
+                local_dir = ask_local_dir_when_nas_missing(self, nas_dir)
+                if not local_dir:
+                    return
+                self.custom_save_dir = local_dir
+                self.path_lineedit.setText(local_dir)
+                self.radio_custom.setChecked(True)
+                save_to_nas = False
+                custom_dir  = local_dir
         start_at     = time.time() + 3.2      # 3 秒後正式啟動：2s 給 ffmpeg 預熱（RTSP handshake + keyframe），1s 給 worker 就緒
         session_name = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -589,6 +601,7 @@ class MultiCameraTab(QWidget):
             self.nas_copy_done += 1
         elif status == "error":
             self.nas_copy_errors += 1
+            self._nas_error_msgs.append(f"{camera_name}: {msg}")
         # 還沒 _after_stop snapshot 之前不檢查完成度（避免快檔案的 started/done 同 tick 抵達誤判）
         if not self._stop_confirmed:
             return
@@ -605,6 +618,10 @@ class MultiCameraTab(QWidget):
     def _on_all_nas_copies_done(self):
         if self.nas_copy_errors:
             self.record_time_label.setText(f"NAS 複製完成（{self.nas_copy_errors} 個失敗，已存桌面）")
+            # 所有相機的失敗訊息彙整成一個視窗（原本每台各跳一次）
+            QMessageBox.warning(self, "NAS 複製失敗",
+                                f"{self.nas_copy_errors} 支影片無法複製到 NAS，已改存本機：\n\n"
+                                + "\n".join(self._nas_error_msgs))
         else:
             self.record_time_label.setText(f"NAS 複製完成（{self.nas_copy_done}）")
         # _reset_recording_paths 用更新後的 last_recording_path（已被 nas_copy_done 改成 NAS 路徑）
@@ -616,6 +633,7 @@ class MultiCameraTab(QWidget):
         self.nas_copy_errors  = 0
         self._stop_confirmed  = False
         self._nas_expected    = 0
+        self._nas_error_msgs  = []
 
     def _clear_status_label_if_idle(self):
         if not self.record_timer.isActive():

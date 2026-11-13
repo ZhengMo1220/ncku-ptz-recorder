@@ -12,6 +12,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
 
 from .ptz_control_ui import Ui_ptz_control
 from utils.stream_thread import StreamThread, USE_GO2RTC
+from utils.save_location import nas_reachable, ask_local_dir_when_nas_missing
 from .ptz_control import ptzControl
 from utils.icons_utils import resource_path
 
@@ -315,7 +316,7 @@ class PtzTabControl(QWidget):
             lambda msg: QMessageBox.warning(self, "錄影錯誤", msg)
         )
         # NAS staging 複製狀態：在 record_time_label 顯示「複製到 NAS / 完成」（同多相機分頁策略）。
-        # 錯誤已透過 stream_thread 內部 chain 到 recording_error，會另跳 QMessageBox 警告。
+        # 複製失敗時由 _on_nas_copy_status 跳 QMessageBox 警告。
         self.stream_thread.nas_copy_status.connect(self._on_nas_copy_status)
         self.stream_thread.start()
         # PTZ 按鈕只有 ONVIF PTZ 連線成功才啟用；錄影按鈕不論機型都可用。
@@ -403,6 +404,16 @@ class PtzTabControl(QWidget):
         else:   # 只剩 NAS / 自訂兩種模式，預設 NAS
             save_to_nas = True
             custom_dir  = None
+            # NAS 根目錄（如 Z:\）不存在 → 先問改存哪裡，避免錄完才每台各跳一次「NAS 複製失敗」
+            if not nas_reachable(nas_dir):
+                local_dir = ask_local_dir_when_nas_missing(self, nas_dir)
+                if not local_dir:
+                    return
+                self.custom_save_dir = local_dir
+                self.path_lineedit.setText(local_dir)
+                self.radio_custom.setChecked(True)
+                save_to_nas = False
+                custom_dir  = local_dir
 
         # 3 秒後正式啟動：2s 給 ffmpeg 預熱（RTSP handshake + keyframe），1s 給 worker 就緒。
         # worker 在 start_at - PREAMBLE_SECS 起 ffmpeg 並錄一段 preamble，避免冷啟動的開頭缺幀。
@@ -461,6 +472,7 @@ class PtzTabControl(QWidget):
         elif status == "error":
             self.ui.record_time_label.setText("NAS 複製失敗（已存本機）")
             QTimer.singleShot(4000, self._clear_status_if_idle)
+            QMessageBox.warning(self, "NAS 複製失敗", msg)
 
     def _clear_status_if_idle(self):
         if not self.record_timer.isActive() and hasattr(self.ui, "record_time_label"):
