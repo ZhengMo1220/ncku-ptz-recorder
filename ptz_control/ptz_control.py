@@ -49,8 +49,9 @@ class ptzControl(object):
         tilt = status.Position.PanTilt.y
         zoom = status.Position.Zoom.x
 
-        # Ensure tilt doesn't exceed 1
-        new_tilt = min(tilt + self.movement_step_size, 1.0)
+        # 這批相機的 ONVIF tilt 軸是反的：y 變小鏡頭才往上，y 變大往下。
+        # Ensure tilt doesn't go below -1
+        new_tilt = max(tilt - self.movement_step_size, -1.0)
 
         self.requesta = self.ptz.create_type('AbsoluteMove')
         self.requesta.ProfileToken = self.media_profile.token
@@ -67,8 +68,9 @@ class ptzControl(object):
         tilt = status.Position.PanTilt.y
         zoom = status.Position.Zoom.x
 
-        # Ensure tilt doesn't go below -1
-        new_tilt = max(tilt - self.movement_step_size, -1.0)
+        # tilt 軸反向（見 move_up）：y 變大鏡頭往下。
+        # Ensure tilt doesn't exceed 1
+        new_tilt = min(tilt + self.movement_step_size, 1.0)
 
         self.requesta = self.ptz.create_type('AbsoluteMove')
         self.requesta.ProfileToken = self.media_profile.token

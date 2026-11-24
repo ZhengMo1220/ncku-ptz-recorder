@@ -5,7 +5,7 @@ from typing import Optional
 from PyQt5.QtWidgets import (
     QWidget, QGraphicsScene, QGraphicsView, QMessageBox,
     QGroupBox, QVBoxLayout, QHBoxLayout, QRadioButton, QLineEdit, QPushButton,
-    QButtonGroup, QFileDialog, QSizePolicy, QCheckBox,
+    QButtonGroup, QFileDialog, QSizePolicy, QCheckBox, QComboBox, QLabel,
 )
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
@@ -22,6 +22,16 @@ from utils.icons_utils import resource_path
 # 或切換相機才歸零。
 HEALTH_CHECK_INTERVAL_MS = 15000
 MAX_RECONNECT_ATTEMPTS   = 3
+
+# 方向鍵 / 縮放每按一次移動多少（ONVIF 座標，pan/tilt 範圍 -1~1，zoom 0~1）。
+PTZ_STEP_OPTIONS = [
+    ("微調 (1%)",  0.01),
+    ("小 (2%)",    0.02),
+    ("中 (5%)",    0.05),
+    ("大 (10%)",   0.10),
+    ("特大 (20%)", 0.20),
+]
+PTZ_STEP_DEFAULT_INDEX = 2   # 中 (5%)，跟原本 movement_step_size 一樣
 
 class CameraConnectWorker(QThread):
     finished = pyqtSignal(object)
@@ -65,6 +75,7 @@ class PtzTabControl(QWidget):
         self._init_camera_map()
         self._build_save_location_panel()
         self._build_keep_preview_checkbox()
+        self._build_step_selector()
         self._build_imaging_button()
         self._bind_ui()
         self._disable_control_buttons()
@@ -203,6 +214,27 @@ class PtzTabControl(QWidget):
         if hasattr(self.ui, "record_layout"):
             self.ui.record_layout.addWidget(self.chk_keep_preview, 2, 0, 1, 3)
 
+    def _build_step_selector(self):
+        """方向鍵 / 縮放下方加「調整幅度」下拉：決定每按一次鍵相機移動多少。"""
+        self.step_label = QLabel("調整幅度 :")
+        self.step_combo = QComboBox()
+        for text, step in PTZ_STEP_OPTIONS:
+            self.step_combo.addItem(text, step)
+        self.step_combo.setCurrentIndex(PTZ_STEP_DEFAULT_INDEX)
+        self.step_combo.setToolTip("每按一次方向鍵 / 放大縮小，相機移動的幅度")
+        self.step_combo.currentIndexChanged.connect(self._apply_step_size)
+        if hasattr(self.ui, "ptz_layout"):
+            self.ui.ptz_layout.addWidget(self.step_label, 6, 0, 1, 1)
+            self.ui.ptz_layout.addWidget(self.step_combo, 6, 1, 1, 2)
+
+    def _current_step_size(self) -> float:
+        step = self.step_combo.currentData() if hasattr(self, "step_combo") else None
+        return float(step) if step else PTZ_STEP_OPTIONS[PTZ_STEP_DEFAULT_INDEX][1]
+
+    def _apply_step_size(self, *_):
+        if self.ptz_control is not None:
+            self.ptz_control.movement_step_size = self._current_step_size()
+
     def _build_imaging_button(self):
         """PTZ 控制區最下方加「影像設定…」：直接調相機亮度 / 對比 / 白平衡等（ONVIF Imaging）。"""
         self.imaging_dialog = None
@@ -212,7 +244,7 @@ class PtzTabControl(QWidget):
         self.btn_imaging.setEnabled(False)
         self.btn_imaging.clicked.connect(self._open_imaging_dialog)
         if hasattr(self.ui, "ptz_layout"):
-            self.ui.ptz_layout.addWidget(self.btn_imaging, 6, 0, 1, 3)
+            self.ui.ptz_layout.addWidget(self.btn_imaging, 7, 0, 1, 3)
 
     def _open_imaging_dialog(self):
         name = self.ui.camera_select_combobox.currentText()
@@ -286,6 +318,25 @@ class PtzTabControl(QWidget):
             finally: self.stream_thread = None
         self.ptz_control = None
 
+    def show_camera(self, name: str):
+        """從多機分頁點格子進來：選好這台並連線（已在串流就切換相機）。
+        單機分頁正在錄影時不切換，避免把錄到一半的檔案停掉。"""
+        combo = getattr(self.ui, "camera_select_combobox", None)
+        if combo is None:
+            return
+        idx = combo.findText(name)
+        if idx < 0:
+            return
+        if combo.currentIndex() != idx and self.record_timer.isActive():
+            QMessageBox.information(
+                self, "單機分頁錄影中",
+                f"單機分頁正在錄影 {combo.currentText()}，先停止錄影才能切換到 {name}。")
+            return
+        if combo.currentIndex() != idx:
+            combo.setCurrentIndex(idx)   # 串流中 → handle_camera_change 會自動重連新相機
+        if not self.streaming:
+            self.handle_toggle_stream()
+
     def handle_camera_change(self):
         if self.streaming:
             self._reconnect_fails = 0   # 換相機 → 重置重試計數
@@ -353,6 +404,7 @@ class PtzTabControl(QWidget):
         if not self._ptz_result_still_valid(worker):
             return
         self.ptz_control = ptz_ctrl
+        self._apply_step_size()
         self._enable_control_buttons()
         self.btn_imaging.setEnabled(name.startswith("Ptz"))
 

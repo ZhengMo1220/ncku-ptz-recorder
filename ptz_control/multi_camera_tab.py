@@ -8,11 +8,12 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QPushButton, QHBoxLayout, QMessageBox, QCheckBox,
     QSizePolicy, QGroupBox, QLineEdit, QFileDialog, QRadioButton, QButtonGroup
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QSize
 from PyQt5.QtGui import QFont
 from utils.stream_thread import StreamThread, cleanup_staging_dir, USE_GO2RTC
 from utils.save_location import nas_reachable, ask_local_dir_when_nas_missing
 from utils.onvif_sync import KeyframeSyncer, SYNC_FIRE_BEFORE_START
+from utils.ui_utils import fit_grid_cell_size, grid_minimum_size_hint
 
 # health_timer：偵測 worker 死掉並自動重連。間隔拉長到 15s（原本 5s 會讓真的
 # 離線的相機每 5 秒洗一次「無法連線」log）；同一支連續重連失敗這麼多次就放棄，
@@ -83,7 +84,8 @@ class MultiCameraTab(QWidget):
         # 右：存檔位置選擇
         self.path_groupBox = QGroupBox("存檔位置")
         self.path_groupBox.setFont(QFont("Arial", 12))
-        self.path_groupBox.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        # 水平 Maximum：螢幕夠寬時用 sizeHint，小筆電時可縮到 minimumSizeHint
+        self.path_groupBox.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
 
         path_layout = QVBoxLayout(self.path_groupBox)
         path_layout.setSpacing(6)
@@ -99,7 +101,7 @@ class MultiCameraTab(QWidget):
         self.radio_nas.setFixedWidth(_rb_w)
         self.nas_path_edit = QLineEdit(r"Z:\PTZ recordings")
         self.nas_path_edit.setFont(QFont("Arial", 10))
-        self.nas_path_edit.setMinimumWidth(220)
+        self.nas_path_edit.setMinimumWidth(150)   # 小筆電：220 會把上方控制列撐超過螢幕
         _nas_row.addWidget(self.radio_nas)
         _nas_row.addWidget(self.nas_path_edit)
 
@@ -111,7 +113,7 @@ class MultiCameraTab(QWidget):
         self.radio_custom.setFixedWidth(_rb_w)
         self.path_lineedit = QLineEdit()
         self.path_lineedit.setPlaceholderText("選擇資料夾...")
-        self.path_lineedit.setMinimumWidth(160)
+        self.path_lineedit.setMinimumWidth(90)
         self.path_lineedit.setReadOnly(True)
         self.path_lineedit.setStyleSheet("background: #f5f5f5;")
         btn_browse = QPushButton("瀏覽...")
@@ -148,7 +150,7 @@ class MultiCameraTab(QWidget):
         # 中：選擇要連線的相機（提供使用者壓力測試這台筆電的承載上限）
         self.connect_groupBox = QGroupBox("連線相機")
         self.connect_groupBox.setFont(QFont("Arial", 12))
-        self.connect_groupBox.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.connect_groupBox.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         self.connect_grid = QGridLayout(self.connect_groupBox)
         self.connect_grid.setSpacing(4)
         self.connect_grid.setContentsMargins(8, 10, 8, 8)
@@ -169,9 +171,9 @@ class MultiCameraTab(QWidget):
         self.grid_container.addStretch(1)
 
         self.grid = QGridLayout()
-        self.grid.setContentsMargins(10, 20, 10, 20)
+        self.grid.setContentsMargins(10, 8, 10, 8)
         self.grid.setHorizontalSpacing(20)  # 4×460 + 3×20 + 20 (margins) = 1920，剛好貼齊 FHD
-        self.grid.setVerticalSpacing(24)
+        self.grid.setVerticalSpacing(12)
         self.grid.setAlignment(Qt.AlignCenter)
 
         self.grid_container.addLayout(self.grid)
@@ -182,7 +184,7 @@ class MultiCameraTab(QWidget):
 
         # ── 視窗最左下：全選錄影 ───────────────────────────────────────
         self.bottom_hbox = QHBoxLayout()
-        self.bottom_hbox.setContentsMargins(10, 8, 10, 10)
+        self.bottom_hbox.setContentsMargins(10, 4, 10, 4)
         self.btn_select_all = QPushButton("全選錄影")
         self.btn_select_all.setFont(QFont("Arial", 11))
         self.btn_select_all.setMinimumHeight(32)
@@ -240,6 +242,8 @@ class MultiCameraTab(QWidget):
 
                 label = QLabel(self)
                 label.setFont(QFont("Segoe UI", 12, QFont.Bold))
+                # 格子縮小時標籤（尤其 "Ptz01 (IP:...)"）不要撐寬該欄，寧可文字被裁掉
+                label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
                 if idx < n:
                     _txt = self.camera_names[idx]
                     if idx == 0:   # Ptz01：名字後接 IP，同字級同色 → "Ptz01 (IP:10.30.3.27)"
@@ -666,14 +670,19 @@ class MultiCameraTab(QWidget):
         super().resizeEvent(event)
         self._recompute_cell_sizes()
 
+    def minimumSizeHint(self):
+        # 不讓 setFixedSize 的格子（初始 460×258）把視窗最小尺寸撐到 1920 寬
+        hint = grid_minimum_size_hint(self, self.views, rows=2, cols=4)
+        m = QWidget.layout(self).contentsMargins()
+        top_w = self.top_hbox.minimumSize().width() + m.left() + m.right()
+        return QSize(max(hint.width(), top_w), hint.height())
+
     def _recompute_cell_sizes(self):
         if not self.views:
             return
-        # 4 cols × cell_w + 3×spacing(20) + 2×grid_margin(10) = self.width()
-        # → cell_w = (self.width() - 80) // 4，最小 280×157（再小看不清楚）
-        avail = self.width() - 80
-        cell_w = max(280, avail // 4)
-        cell_h = cell_w * 9 // 16
+        # 寬：4 cols × cell_w + 3×spacing(20) + 2×grid_margin(10) = self.width()
+        # 高：2 rows 要連同上方控制列、下方「全選錄影」一起塞得下（小筆電螢幕）
+        cell_w, cell_h = fit_grid_cell_size(self, self.views, rows=2, cols=4)
         for view, scene in zip(self.views, self.scenes):
             if view.width() != cell_w or view.height() != cell_h:
                 view.setFixedSize(cell_w, cell_h)
@@ -696,31 +705,6 @@ class MultiCameraTab(QWidget):
             if t is not None and t.isRunning():
                 try: t.resume_preview()
                 except Exception: pass
-
-    # ── 單台攝影機暫停 / 恢復 ──────────────────────────────────────────
-    def pause_camera_by_ip(self, ip_addr):
-        if self.record_timer.isActive():
-            return  # 錄影中不暫停串流，避免中斷錄影
-        for t in self.threads:
-            if t is not None and t.src == ip_addr and t.isRunning():
-                t.stop()
-
-    def resume_camera_by_ip(self, ip_addr):
-        for i, src in enumerate(self.camera_sources):
-            if src == ip_addr:
-                if self.threads[i] is None or not self.threads[i].isRunning():
-                    _name = self.camera_names[i]
-                    new_th = StreamThread(
-                        self.scenes[i], self.views[i],
-                        camera_ip=ip_addr, camera_name=_name,
-                        ui_fps=30, use_substream=True,
-                    )
-                    _n = self.camera_names[i]
-                    new_th.recording_error.connect(lambda msg, n=_n: QMessageBox.warning(self, f"錄影錯誤 [{n}]", msg))
-                    new_th.nas_copy_status.connect(lambda status, msg, n=_n: self._on_nas_copy_status(n, status, msg))
-                    self.threads[i] = new_th
-                    new_th.start()
-                return
 
     # ── 清理 ───────────────────────────────────────────────────────────
     def closeEvent(self, event):

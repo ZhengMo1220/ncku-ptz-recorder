@@ -18,6 +18,7 @@ from PyQt5.QtCore import Qt, QSize, QTimer, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QImage, QPixmap
 
 from utils.icons_utils import resource_path
+from utils.ui_utils import fit_grid_cell_size, grid_minimum_size_hint
 from utils.hwaccel import get_hwaccel, decode_input_args, build_vf
 
 
@@ -743,13 +744,18 @@ class PlaybackTab(QWidget):
         super().resizeEvent(event)
         self._recompute_cell_sizes()
 
+    def minimumSizeHint(self):
+        # 不讓 setFixedSize 的格子（初始 460×258）把視窗最小尺寸撐到 1920 寬
+        rows = (len(self._frame_labels) + 3) // 4
+        return grid_minimum_size_hint(self, self._frame_labels, rows=rows, cols=4)
+
     def _recompute_cell_sizes(self):
         if not self._frame_labels:
             return
-        # 4 cols × cell_w + 3×spacing(20) + 2×grid_margin(? 預設) ≈ self.width()
-        avail = self.width() - 80
-        cell_w = max(280, avail // 4)
-        cell_h = cell_w * 9 // 16
+        # 寬：4 cols × cell_w + 3×spacing(20) + margins ≈ self.width()
+        # 高：所有排數連同上方工具列、下方播放控制一起塞得下（小筆電螢幕）
+        rows = (len(self._frame_labels) + 3) // 4
+        cell_w, cell_h = fit_grid_cell_size(self, self._frame_labels, rows=rows, cols=4)
         for lbl in self._frame_labels:
             if lbl.width() != cell_w or lbl.height() != cell_h:
                 lbl.setFixedSize(cell_w, cell_h)

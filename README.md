@@ -155,7 +155,7 @@ password = 相機密碼
 | 分頁 | 檔案 | 功能 |
 |---|---|---|
 | 單機攝影機 | `ptz_control/camera_tab_control.py` | 選一台相機看大畫面、ONVIF PTZ 方向/zoom 控制（限 `Ptz*`）、單路錄影。錄影中會顯示紅點 `recording_status_label`。「影像設定…」可直接調相機畫面（見下方「相機影像設定」） |
-| 多機攝影機 | `ptz_control/multi_camera_tab.py` | 2×4 格線同時預覽 8 台 `Ptz01~Ptz08`、勾選多台同步錄影、可勾選要不要連線（壓力測試承載上限）。點格子會開「放大」分頁（`enlarge_tab.py`） |
+| 多機攝影機 | `ptz_control/multi_camera_tab.py` | 2×4 格線同時預覽 8 台 `Ptz01~Ptz08`、勾選多台同步錄影、可勾選要不要連線（壓力測試承載上限）。點格子會跳到「單機攝影機」分頁並連線那台（可直接操作 PTZ） |
 | 同步播放 | `playback_tab.py` | 選一個錄影資料夾，依相機名前綴配對 mp4，8 路同步回放。依各檔第一幀的時間戳記（PTS `start_time`）對齊（`ALIGN_MODE = "pts"`），見下方「多路同步」 |
 
 ### 相機影像設定（單機分頁「影像設定…」）
@@ -272,7 +272,6 @@ tab.set_annotate_hook(fn)   # fn: (frame_bgr: np.ndarray, cam_name: str) -> np.n
 
 - YOLO 尚未實作（見上）。
 - 錄影參數 `target_fps` / `frame_size` / `fourcc` 在 `-c copy` 下無效，簽名待精簡。
-- `enlarge_tab.py` 放大視窗走「輸出原始解析度」的預覽路徑（pipe ~90 MB/s），可考慮給 `preview_size=(1280,720)`。
 - 相機清單 `Rot* / Sti* / Ptz*` 寫死在多個檔。
 
 ---
@@ -290,7 +289,6 @@ config.example.ini          相機帳密範本 → 複製成 config.ini（不進
 .vscode/                    VS Code 啟動設定（launch.json）與建議擴充套件
 
 playback_tab.py             同步播放分頁（含 _CameraDecoder：每路一支解碼 ffmpeg）
-enlarge_tab.py              多機分頁點格子後的放大視窗
 
 ptz_control/
   camera_tab_control.py     單機攝影機分頁

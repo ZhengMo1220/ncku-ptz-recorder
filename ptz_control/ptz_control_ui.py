@@ -24,7 +24,8 @@ class Ui_ptz_control(object):
         self.gridLayout_3 = QtWidgets.QGridLayout()
         self.gridLayout_3.setObjectName("gridLayout_3")
         self.main_view = QtWidgets.QGraphicsView(ptz_control)
-        self.main_view.setMinimumSize(QtCore.QSize(480, 360))
+        # 小筆電（1366×768 或 125%/150% 縮放）留空間給右側面板，最小只到 320×180
+        self.main_view.setMinimumSize(QtCore.QSize(320, 180))
         self.main_view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.main_view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.main_view.setObjectName("main_view")
@@ -163,8 +164,17 @@ class Ui_ptz_control(object):
         spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.right_layout.addItem(spacerItem)
 
-        # 加入右側
-        self.gridLayout_2.addWidget(self.right_widget, 0, 1, 1, 1)
+        # 加入右側：包在 QScrollArea 裡，螢幕高度不夠時右側面板出現捲軸，
+        # 而不是把按鈕 / 輸入框擠扁。
+        self.right_scroll = QtWidgets.QScrollArea(ptz_control)
+        self.right_scroll.setObjectName("right_scroll")
+        self.right_scroll.setWidgetResizable(True)
+        self.right_scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.right_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.right_scroll.setWidget(self.right_widget)
+        self.right_scroll.setMinimumWidth(300)
+        self.right_scroll.setMaximumWidth(360)
+        self.gridLayout_2.addWidget(self.right_scroll, 0, 1, 1, 1)
         self.gridLayout_2.setColumnStretch(0, 8)
         self.gridLayout_2.setColumnStretch(1, 2)
 

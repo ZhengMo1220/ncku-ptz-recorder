@@ -4,7 +4,7 @@ import multiprocessing as mp
 
 
 def _run():
-    from PyQt5.QtWidgets import QApplication, QMainWindow, QTabBar
+    from PyQt5.QtWidgets import QApplication, QMainWindow
     from PyQt5.QtCore import QTimer, Qt
     from PyQt5.QtGui import QIcon
 
@@ -12,7 +12,6 @@ def _run():
     from ptz_control.camera_tab_control import PtzTabControl
     from ptz_control.multi_camera_tab import MultiCameraTab
     from playback_tab import PlaybackTab
-    from enlarge_tab import EnlargeTab
     from utils.icons_utils import resource_path
     from utils.stream_thread import maybe_start_go2rtc, stop_go2rtc
 
@@ -26,6 +25,9 @@ def _run():
                 import time as _t; _t.sleep(1.0)   # 等 go2rtc 綁好 RTSP port 再連
             self.ui = Ui_MainWindow()
             self.ui.setupUi(self)
+            # 選單列 / 狀態列都沒在用，藏起來把高度（約 40px）讓給畫面，小筆電比較塞得下
+            self.ui.menubar.hide()
+            self.ui.statusbar.hide()
             self.init_tabs()
             self.set_window_icon()
 
@@ -35,23 +37,17 @@ def _run():
             ptz_names = [f"Ptz{i:02d}" for i in range(1, 9)]
 
             self.ptz_tab = PtzTabControl()
-            ptz_idx = self.ui.Two_d_Tab.addTab(self.ptz_tab, "單機攝影機")
+            self.ui.Two_d_Tab.addTab(self.ptz_tab, "單機攝影機")
 
             self.main_tab = MultiCameraTab(camera_ips=ptz_ips, camera_names=ptz_names)
             multi_idx = self.ui.Two_d_Tab.addTab(self.main_tab, "多機攝影機")
 
             self.playback_tab = PlaybackTab(camera_names=ptz_names)
-            playback_idx = self.ui.Two_d_Tab.addTab(self.playback_tab, "同步播放")
+            self.ui.Two_d_Tab.addTab(self.playback_tab, "同步播放")
 
             # 錄完不自動載入到同步播放分頁；使用者要看回放自己進 playback 按「選擇影片資料夾…」
+            # 多機分頁點格子 → 跳到單機分頁並連線那台（可直接操作 PTZ）
             self.main_tab.cameraClicked.connect(self.open_camera_tab)
-
-            self.ui.Two_d_Tab.setTabsClosable(True)
-            self.ui.Two_d_Tab.tabCloseRequested.connect(self.handle_close_tab)
-            # 3 個主分頁的 X 拿掉（保留 setTabsClosable=True 是為了之後 enlarge 分頁能關）
-            for idx in (ptz_idx, multi_idx, playback_idx):
-                self.ui.Two_d_Tab.tabBar().setTabButton(idx, QTabBar.RightSide, None)
-                self.ui.Two_d_Tab.tabBar().setTabButton(idx, QTabBar.LeftSide, None)
             # 啟動預設停在「多隻攝影機」（使用者關心的是多攝預覽，不是單機 PTZ 操作）
             self.ui.Two_d_Tab.setCurrentIndex(multi_idx)
 
@@ -62,24 +58,8 @@ def _run():
             self.playback_tab.previewsShouldResume.connect(self.main_tab.resume_all_previews)
 
         def open_camera_tab(self, src, name):
-            if hasattr(self.main_tab, "pause_camera_by_ip"):
-                self.main_tab.pause_camera_by_ip(src)
-            tab = EnlargeTab(src, title=name, parent=self)
-            tab.src_ip = src
-            idx = self.ui.Two_d_Tab.addTab(tab, name)
-            self.ui.Two_d_Tab.setCurrentIndex(idx)
-
-        def handle_close_tab(self, index):
-            w = self.ui.Two_d_Tab.widget(index)
-            if w in (self.ptz_tab, self.main_tab, self.playback_tab):
-                return
-            target_ip = getattr(w, "src_ip", getattr(w, "src", None))
-            if hasattr(w, "stop_stream"):
-                try: w.stop_stream()
-                except Exception: pass
-            self.ui.Two_d_Tab.removeTab(index)
-            if target_ip and hasattr(self.main_tab, "resume_camera_by_ip"):
-                self.main_tab.resume_camera_by_ip(target_ip)
+            self.ui.Two_d_Tab.setCurrentWidget(self.ptz_tab)
+            self.ptz_tab.show_camera(name)
 
         def set_window_icon(self):
             self.setWindowIcon(QIcon(resource_path('./icons/video-camera.png')))
@@ -97,9 +77,10 @@ def _run():
     app = QApplication(sys.argv)
     _warn_if_credentials_unset()
     window = Main()
-    # cell 已改為跟視窗等比縮放（multi_camera_tab / playback_tab 的 resizeEvent），
-    # 所以視窗最小設小一點，讓使用者真的能拖小視窗。1200×700 是 cell 280×157 的下限。
-    window.setMinimumSize(1200, 700)
+    # cell 跟視窗寬高等比縮放（utils.ui_utils.fit_grid_cell_size），視窗最小可以很小。
+    # 原本 1200×700 比小筆電的可用區域還大（1366×768 開 125% 縮放 ≈ 1093×614），
+    # 視窗會超出螢幕、內容被擠壓 → 改成 960×540。
+    window.setMinimumSize(960, 540)
     window.showMaximized()
 
     # 降低 Python GC 週期性 stop-the-world 造成的預覽抖動：8 路每秒配置數百個
